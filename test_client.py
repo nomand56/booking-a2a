@@ -1,3 +1,4 @@
+
 import logging
 
 from typing import Any
@@ -48,13 +49,49 @@ async def main() -> None:
             logger.info('Successfully fetched public agent card:')
             logger.info(
                 _public_card.model_dump_json(indent=2, exclude_none=True)
-                )
+            )
             final_agent_card_to_use = _public_card
             logger.info(
                 '\nUsing PUBLIC agent card for client initialization (default).'
             )
 
-           
+            if _public_card.supportsAuthenticatedExtendedCard:
+                try:
+                    logger.info(
+                        f'\nPublic card supports authenticated extended card. Attempting to fetch from: {base_url}{EXTENDED_AGENT_CARD_PATH}'
+                    )
+                    auth_headers_dict = {
+                        'Authorization': 'Bearer dummy-token-for-extended-card'
+                    }
+                    _extended_card = await resolver.get_agent_card(
+                        relative_card_path=EXTENDED_AGENT_CARD_PATH,
+                        http_kwargs={'headers': auth_headers_dict},
+                    )
+                    logger.info(
+                        'Successfully fetched authenticated extended agent card:'
+                    )
+                    logger.info(
+                        _extended_card.model_dump_json(
+                            indent=2, exclude_none=True
+                        )
+                    )
+                    final_agent_card_to_use = (
+                        _extended_card  # Update to use the extended card
+                    )
+                    logger.info(
+                        '\nUsing AUTHENTICATED EXTENDED agent card for client initialization.'
+                    )
+                except Exception as e_extended:
+                    logger.warning(
+                        f'Failed to fetch extended agent card: {e_extended}. Will proceed with public card.',
+                        exc_info=True,
+                    )
+            elif (
+                _public_card
+            ):  # supportsAuthenticatedExtendedCard is False or None
+                logger.info(
+                    '\nPublic card does not indicate support for an extended card. Using public card.'
+                )
 
         except Exception as e:
             logger.error(
